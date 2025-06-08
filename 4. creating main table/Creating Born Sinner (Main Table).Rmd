@@ -1,0 +1,176 @@
+Creating Born Sinner (Main Table)
+```{r}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+```
+
+```{r}
+names(edu_data)
+```
+
+```{r}
+# Rename 'Unnamed: 0' to 'State' in each dataset
+datasets <- list(income_data, race_group, edu_data, ag_police_employee, ag_pop_data, ag_rep_crime, crime_rate)
+
+list2env(setNames(datasets, c("income_data", "race_group", "edu_data", "ag_police_employee", "ag_pop_data", "ag_rep_crime", "crime_rate")), envir = .GlobalEnv)
+
+# Select relevant columns from each datasets that need to be reduced
+bs_income_data <- income_data %>%
+  mutate(
+    `25 to 49` = `25 to 34` + `35 to 49`,
+    `50 to 99` = `50 to 74` + `75 to 99`,
+    `100 to 199` = `100 to 149` + `150 to 199`
+  ) %>%
+  select(
+    State,
+    Unemployment,
+    `Under 10K`,
+    `10 to 14`,
+    `15 to 24`,
+    `25 to 49`,
+    `50 to 99`,
+    `100 to 199`,
+    `Over 200K`
+  )
+
+bs_race_group <- race_group %>%
+  select("State", "White", "Black or African American" , "Hispanic or Latino Origin", "Asian" ,"American Indian and Alaska Native", "Some other race" )
+
+bs_edu_data <- edu_data %>%
+  select(
+    State,
+    `25+, Under 9th Grade`,
+    `25+, High School Graduate`,
+    White,
+    `Black or African American`,
+    `Hispanic or Latino Origin`,
+    Asian,
+    `American Indian or Alaska Native`,
+    `Some other race`
+  ) %>%
+  rename(
+    `White HSD` = White,
+    `Black or African American HSD` = `Black or African American`,
+    `Hispanic or Latino HSD` = `Hispanic or Latino Origin`,
+    `Asian HSD` = Asian,
+    `American Indian and Alaska Native HSD` = `American Indian or Alaska Native`,
+    `Other Race HSD` = `Some other race`
+  )
+
+bs_ag_pop_data <- ag_pop_data %>%
+  select("State", "POPESTIMATE2019") %>%
+  rename(Population = "POPESTIMATE2019")
+
+bs_crime_rate <- crime_rate %>%
+  select("State","Total Crimes")
+
+# Join all datasets by State into 'born_sinner'
+born_sinner <- bs_income_data %>%
+  full_join(bs_race_group, by = "State") %>%
+  full_join(bs_edu_data, by = "State") %>%
+  full_join(bs_ag_police_employee, by = "State") %>%
+  full_join(bs_ag_pop_data, by = "State") %>%
+  full_join(bs_crime_rate, by = "State")
+```
+```{r}
+# Remove Pueto Rico and District of Columbia as they are not official states and the socioeconomic factors do not align well with the actual states.
+born_sinner <- born_sinner %>%
+  filter(!(State %in% c("PUERTO RICO", "DISTRICT OF COLUMBIA")))
+```
+Creating new variables
+
+```{r}
+# Include crime per capita data
+born_sinner <- born_sinner %>%
+  mutate(Crime_Rate_100k = (`Total Crimes` / Population) * 100000)
+```
+
+```{r}
+ggplot(born_sinner, aes(y = Crime_Rate_100k)) +
+  geom_boxplot(fill = "steelblue", color = "black") +
+  labs(
+    title = "Boxplot of Crime Rate per 100k",
+    y = "Crime Rate per 100,000",
+    x = ""
+  ) +
+  theme_minimal()
+
+```
+```{r}
+born_sinner$Crime_Category <- cut(
+  born_sinner$Crime_Rate_100k,
+  breaks = c(-Inf, 100, 500, 1000, 2000, Inf),
+  labels = c("Very Low", "Low", "Average", "High", "Very High"),
+  right = TRUE
+)
+```
+
+```{r}
+# Remove unwanted rows before scaling
+income_data_clean <- income_data %>%
+  filter(!(State %in% c("PUERTO RICO", "DISTRICT OF COLUMBIA")))
+
+# Scale numeric data excluding the first two columns
+s_income_data <- scale(income_data_clean[, -(1:2)])
+
+# Run k-means
+set.seed(123)
+kmeans_result_income_data <- kmeans(s_income_data, centers = 5)
+
+# Add cluster assignments to the income data
+income_data_clean$Income_Cluster <- kmeans_result_income_data$cluster
+
+# Map to human-readable labels
+cluster_labels <- c("Very Low", "Low", "Average", "High", "Very High")
+income_data_clean$Income_Category <- cluster_labels[income_data_clean$Income_Cluster]
+
+# Join with born_sinner by State
+born_sinner <- born_sinner %>%
+  left_join(income_data_clean %>% select(State, Income_Category), by = "State")
+
+```
+```{r}
+str_to_title(state.name)
+```
+```{r}
+born_sinner$State <- trimws(str_to_title(born_sinner$State))
+
+# Create coordinates for all 50 states (now includes all 50)
+state_coords <- data.frame(
+  State = str_to_title(state.name),
+  Latitude = c(
+    32.8067, 61.3707, 33.7298, 34.9697, 36.1162, 
+    39.0598, 41.5978, 39.3185, 27.7663, 33.0406, 
+    21.0943, 44.2405, 40.3495, 39.8494, 42.0115, 
+    38.5266, 37.6681, 31.1695, 44.6939, 39.0639, 
+    42.2302, 43.3266, 45.6945, 32.7416, 38.4561, 
+    46.9219, 41.1254, 38.3135, 43.4525, 40.2989, 
+    34.8405, 42.1657, 35.6301, 47.5289, 40.3888,
+    35.5653, 44.5720, 40.5908, 41.6809, 33.8569, 
+    44.2998, 35.7478, 31.0545, 40.1500, 44.0459, 
+    37.7693, 47.4009, 38.4912, 44.2685, 42.7560  # Last one is for Wisconsin
+  ),
+  Longitude = c(
+    -86.7911, -152.4044, -111.4312, -92.3731, -119.6816, 
+    -105.3111, -72.7554, -75.5071, -81.6868, -83.6431, 
+    -157.4983, -114.4788, -88.9861, -86.2583, -93.2105,
+    -96.7265, -84.6701, -91.8678, -69.3819, -76.8021, 
+    -71.5301, -84.5361, -93.9002, -89.6787, -92.2884, 
+    -110.4544, -98.2681, -117.0554, -71.5639, -74.5210,
+    -106.2485, -74.9481, -79.8064, -99.7840, -82.7649, 
+    -96.9289, -122.0709, -77.2098, -71.5118, -80.9450, 
+    -99.4388, -86.6923, -97.5635, -111.8624, -72.7107, 
+    -78.1700, -121.4905, -80.9545, -89.6165, -107.3025  # Last one is for Wisconsin
+  )
+)
+
+born_sinner <- merge(born_sinner, state_coords, by = "State", all.x = TRUE)
+
+born_sinner <- born_sinner %>%
+  filter(State %in% state.name) 
+write.csv(born_sinner,"born_sinner.csv")
+```
+
+
+
