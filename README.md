@@ -79,6 +79,13 @@ This dashboard was designed primarily to **empower young Black Americans**. Thro
 
 ---
 
+## 📁 Repository Contents
+
+The files are all numbered in the order they are expected to be used. 
+Only the files from "3. datasets - cleaned" onwards are necessary for creating the main table and viewing the data analysis.
+
+---
+
 ## 🧠 Inspiration
 
 > “I’m a born sinner, but I live better than that.” — J. Cole  
