@@ -1,0 +1,90 @@
+Born Sinner Analysis
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(corrplot)
+library(scales)
+```
+
+```{r}
+# Make sure that all columns other than the State column are numeric
+born_sinner[, 2:ncol(born_sinner)] <- lapply(born_sinner[, 2:ncol(born_sinner)], function(x) as.numeric(gsub("%", "", x)))
+```
+
+```{r}
+ggplot(born_sinner, aes(x = Unemployment, y = `Total Crimes`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Total Crime vs. Unemployment",
+    x = "Unemployment Rate (%)",
+    y = "Total Crime (Count)"
+  ) +
+  scale_y_continuous(labels = comma) +
+  scale_x_continuous(limits = c(0, 5))
+```
+```{r}
+ggplot(born_sinner, aes(x= Unemployment, y = Population)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Population vs. Unemployment",
+    x = "Unemployment Rate (%)",
+    y = "Population"
+  ) +
+  scale_y_continuous(labels = comma) +
+  scale_x_continuous(limits = c(0, 5))
+```
+
+
+```{r}
+# Crime vs. % Black
+ggplot(born_sinner, aes(x = `Black or African American`, y = `Total Crimes`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Violent Crime vs. Black Population (%)")
+```
+
+
+```{r}
+# There was a chance that in the previous chart, the correlation because % of the population that is black and the number of Violent Crimes committed showed little to no correlation because it could have been the case that states with a higher %Black had a lower overall population.
+born_sinner <- born_sinner %>%
+  mutate(
+    `Black or African American` = as.numeric(gsub("%", "", `Black or African American`))
+  )
+
+born_sinner <- born_sinner %>%
+  mutate(
+    Black_Pop = (`Black or African American` / 100) * Population,
+  )
+
+ggplot(born_sinner, aes(x = `Black or African American`, y = Crime_Rate_100k)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Violent Crime Rate vs. % Black Population")
+```
+
+```{r}
+# Correlation Matrix between Numeric variables.
+numeric_vars <- born_sinner %>% select(where(is.numeric)) %>% na.omit()
+cor_matrix <- cor(numeric_vars)
+
+corrplot(cor_matrix, method = "color", tl.cex = 0.7, type = "upper")
+```
+# What this correlation matrix shows is that there is no shown correlation between average household income and crime. Crime is more closely correlated to:
+1. Unemployment
+2. Educational attainment (Not completing the 9th grade)
+3. Population
+4. Other crimes being committed.
+
+There is also a correlation between crime and amount of Law enforcement employed but it can be easily assumed that is more causation as there are going to be more when the population is higher and when there is a larger need for them (more crime).
+This would be similar to the reason why there is a slight correlation between Black_Pop and crime.
+
+Other interesting and potentially important factors include:
+1. As the average salary increases, there is a decrease in Unemployment.
+2. Despite being aggregated on cities, the states show low internal inequality. As the average household income increases, there are less families living in poverty, showing that economic growth is good for both middle class and lower class families.
+3. States with a greater Hispanic or Latino percentage also show an increase in number of "Other" races.
+4. States with lower educational attainment have fewer white people (Strongest correlation being the percentage of white adults with high school diplomas showing strong decrease in states with fewer people completing the 9th grade.)
