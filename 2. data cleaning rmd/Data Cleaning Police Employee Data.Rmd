@@ -1,0 +1,45 @@
+Data Cleaning Police Employee Data
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(janitor)
+```
+
+```{r}
+# Remove last row and remove last column
+police_employee <- Table_78_Full_time_Law_Enforcement_Employees_by_State_by_Cities_2019[1:8590, -ncol(Table_78_Full_time_Law_Enforcement_Employees_by_State_by_Cities_2019)]
+```
+
+
+```{r}
+police_employee <- police_employee %>% fill(State, .direction = "down")
+```
+
+```{r}
+table(police_employee["State"])
+```
+```{r}
+names(police_employee)
+police_employee <- police_employee %>%
+  rename(
+    `Law Enforcement Count` = "Total law\nenforcement\nemployees",
+    `Officers Count` = "Total \nofficers"
+  )
+```
+
+```{r}
+distinct(police_employee["State"])
+```
+```{r}
+# Create Aggregated table
+ag_police_employee <- police_employee %>%
+  group_by(State) %>%
+  summarise(across(where(is.numeric), sum, na.rm = TRUE))
+```
+
+```{r}
+write.csv(ag_police_employee, "ag_police_employee.csv")
+```

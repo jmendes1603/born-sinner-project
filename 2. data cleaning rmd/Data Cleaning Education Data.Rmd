@@ -1,0 +1,109 @@
+Data Cleaning Education Data
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(janitor)
+```
+```{r}
+edu_data <- mod_ACSST1Y2019_S1501_2025_06_05T174849[3:971,]
+
+edu_data <- edu_data[!is.na(edu_data[[1]]), ]
+
+# Get the name of the first column
+first_col <- colnames(edu_data)[1]
+
+# Remove rows where the first column contains "Percent"
+edu_data <- edu_data[!grepl("Percent", edu_data[[first_col]], ignore.case = TRUE), ]
+
+# Replace "Estimate" with NA in the first column
+edu_data[[first_col]][edu_data[[first_col]] == "Estimate"] <- NA
+
+# Fill down NA values in the first column
+edu_data <- edu_data %>%
+  fill(all_of(first_col), .direction = "down")
+
+# Keep only the second occurrence of each duplicated value
+edu_data <- edu_data[duplicated(edu_data[[first_col]]), ]
+
+names(edu_data)[1] <- "State"
+
+edu_data$State <- toupper(edu_data$State)
+```
+```{r}
+names(edu_data)
+```
+
+```{r}
+names(edu_data) <- c(
+  "State",
+  "",
+  "",
+  "18-24, Under High School Graduate",
+  "18-24, High School Graduate",
+  "18-24, Associate Degree",
+  "18-24, Bachelor's Degree",
+  "",
+  "25+, Under 9th Grade",
+  "25+, 9th to 12th Grade",
+  "25+, High School Graduate",
+  "25+, Some College (No Degree)",
+  "25+, Associate Degree",
+  "25+, Bachelor's Degree",
+  "25+, Graduate or professional degree",
+  "",
+  "",
+  "",
+  "",
+  "White",
+  "",
+  "",
+  "White alone, not Hispanic or Latino",
+  "",
+  "",
+  "Black or African American",
+  "",
+  "",
+  "American Indian or Alaska Native",
+  "",
+  "",
+  "Asian",
+  "",
+  "",
+  "Native Hawaiian and Other Pacific Islander",
+  "",
+  "",
+  "Some other race",
+  "",
+  "",
+  "Two or more races",
+  "",
+  "",
+  "Hispanic or Latino Origin",
+  "",
+  ""
+)
+
+edu_data <- edu_data[, colnames(edu_data) != ""]
+
+
+edu_data[] <- lapply(edu_data, function(col) {
+  if (is.character(col)) {
+    col_clean <- gsub("%", "", col)                  # Remove %
+    col_num <- suppressWarnings(as.numeric(col_clean))  # Convert to numeric
+    ifelse(!is.na(col_num), col_num, col)            # Keep numbers; leave others unchanged
+  } else {
+    col
+  }
+})
+
+```
+
+
+
+
+```{r}
+write.csv(edu_data,"edu_data.csv")
+```
+

@@ -1,0 +1,90 @@
+Data Cleaning Crime Rate Data
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(janitor)
+```
+```{r}
+# Excluding Last Row (Wasn't part of the dataset)
+crime_rate <- table_69[1:102, ]
+```
+```{r}
+# Fill down the 'State' column so NA values inherit the last non-NA value
+crime_rate <- crime_rate %>% fill(State, .direction = "down")
+```
+```{r}
+# Remove rows where age group is "Under 18"
+crime_rate <- crime_rate %>% filter(`...2` != "Under 18")
+
+# Show cleaned dataset shape and preview
+dim(crime_rate)  # returns c(num_rows, num_columns)
+
+head(crime_rate[, c("State", "...2")], 10)
+```
+```{r}
+crime_rate <- crime_rate %>%
+  mutate(
+    State = str_replace_all(State, "\\d+", ""),     # Remove digits
+    State = str_replace_all(State, ",", ""),        # Remove commas
+    State = str_trim(State))                        # Trim whitespace
+```
+```{r}
+crime_rate <- crime_rate %>% select(-`...2`)# Remove the unneeded column
+
+# Clean column names
+crime_rate <- crime_rate %>% clean_names()
+
+# View cleaned names
+names(crime_rate)
+
+# Remove known cleaned names
+crime_rate <- crime_rate %>%
+  select(-number_of_agencies, -x2019_estimated_population)
+```
+
+```{r}
+names(crime_rate)
+crime_rate <- crime_rate %>%
+  rename(
+    State = state,
+    `Total Crimes` = total_all_classes1,
+    `Violent Crime` = violent_crime2,
+    `Property Crime` = property_crime2,
+    Murder = murder_and_nonnegligent_manslaughter,
+    Rape = rape3,
+    Robbery = robbery,
+    `Aggravated Assault` = aggravated_assault,
+    Burglary = burglary,
+    Theft = larceny_theft,
+    `Vehicle Theft` = motor_vehicle_theft,
+    Arson = arson,
+    `Other Assaults` = other_assaults,
+    `Forgery and Counterfeiting` = forgery_and_counterfeiting,
+    Fraud = fraud,
+    Embezzlement = embezzlement,
+    `Possession of Stolen Property` = stolen_property_buying_receiving_possessing,
+    Vandalism = vandalism,
+    `Weapons Possession` = weapons_carrying_possessing_etc,
+    Prostitution = prostitution_and_commercialized_vice,
+    `Sex Offenses` = sex_offenses_except_rape_and_prostitution,
+    `Drug Abuse` = drug_abuse_violations,
+    Gambling = gambling,
+    `Family Offenses` = offenses_against_the_family_and_children,
+    DUI = driving_under_the_influence,
+    `Liquor Laws` = liquor_laws,
+    Drunkenness = drunkenness4,
+    `Disorderly Conduct` = disorderly_conduct,
+    Vagrancy = vagrancy,
+    Other = all_other_offenses_except_traffic,
+    Suspicion = suspicion,
+    `Curfew and Loitering` = curfew_and_loitering_law_violations
+  )
+```
+
+```{r}
+write.csv(crime_rate, "crime_rate.csv")
+```
+
+

@@ -1,0 +1,68 @@
+Data Cleaning Race Groups Data
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(janitor)
+```
+
+```{r}
+race_group <- mod_ACSST1Y2019_S0501_2025_06_05T192937[6:837,]
+
+# Remove second column
+race_group <- race_group[, -2]
+
+# Rename first column
+names(race_group)[1] <- "State"
+
+race_group$State <- toupper(race_group$State)
+
+race_group <- race_group[!is.na(race_group$State), ]
+race_group <- race_group[race_group$State != "TOTAL", ]
+race_group$State[race_group$State == "ESTIMATE"] <- NA
+
+# Fill down missing State values
+race_group <- race_group %>%
+  fill(State, .direction = "down")
+
+# Remove the first occurrence of each duplicated State value
+race_group <- race_group %>%
+  filter(duplicated(State))
+```
+
+```{r}
+names(race_group) <- c(
+  "State",
+  "White",
+  "Black or African American",
+  "American Indian and Alaska Native",
+  "Asian",
+  "Native Hawaiian and Other Pacific Islander",
+  "Some other race",
+  "Two or more races",
+  "Hispanic or Latino Origin",
+  "White alone, not Hispanic or Latino"
+)
+```
+```{r}
+race_group[] <- lapply(race_group, function(col) {
+  if (is.character(col)) {
+    # Remove % signs
+    col_clean <- gsub("%", "", col)
+    # Convert to numeric (NAs will remain for non-numeric text)
+    col_num <- suppressWarnings(as.numeric(col_clean))
+    # Keep converted numbers if successful, otherwise return original column
+    ifelse(!is.na(col_num), col_num, col)
+  } else {
+    col
+  }
+})
+```
+
+
+
+```{r}
+write.csv(race_group,"race_group.csv")
+```
+

@@ -1,0 +1,66 @@
+Data Cleaning Income Data
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(janitor)
+```
+
+```{r}
+# Remove overall US data
+income_data <- ACSDP1Y2019_DP03_2025_06_05T163647[4:159,]
+
+#Rename columns
+names(income_data) <- c(
+  "State",
+  "Unemployment",
+  "Under 10K",
+  "10 to 14",
+  "15 to 24",
+  "25 to 34",
+  "35 to 49",
+  "50 to 74",
+  "75 to 99",
+  "100 to 149",
+  "150 to 199",
+  "Over 200K"
+)
+
+# Remove Estimate Rows
+income_data <- income_data %>% filter(!grepl("Estimate", State))
+
+# All "Percent" cells become N/A
+income_data <- income_data %>%
+  mutate(across(everything(), ~ ifelse(grepl("Percent", ., ignore.case = TRUE), NA, .)))
+
+# Fill the N/A cell with correct State
+income_data <- income_data %>% fill(State, .direction = "down")
+
+# Remove the first row for each state as all the income cells contain N/A values
+income_data <- income_data %>%
+  group_by(State) %>%
+  filter(row_number() == 2) %>%
+  ungroup()
+
+# Upper case all states to match other datasets
+income_data$State <- toupper(income_data$State)
+```
+
+```{r}
+# Convert percentage strings to numeric in all columns
+income_data[] <- lapply(income_data, function(x) {
+  if (is.character(x)) {
+    x_clean <- gsub("%", "", x)              # remove %
+    x_num <- suppressWarnings(as.numeric(x_clean))  # convert to numeric (NA if not numeric)
+    return(ifelse(!is.na(x_num), x_num, x))  # replace only if it was a valid percentage
+  } else {
+    return(x)
+  }
+})
+```
+
+
+```{r}
+write.csv(income_data,"income_data.csv")
+```

@@ -1,0 +1,54 @@
+Data Cleaning Reported Crime Data
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readr)
+library(janitor)
+```
+
+```{r}
+rep_crime <- Table_8_Offenses_Known_to_Law_Enforcement_by_State_by_City_2019
+
+# Fill down the 'State' column so NA values inherit the last non-NA value
+rep_crime <- rep_crime %>% fill(State, .direction = "down")
+
+
+
+rep_crime <- rep_crime %>%
+  rename(
+    Rape = Rape1,
+    `Violent Crime` = "Violent\ncrime",
+    `Murder` = "Murder and\nnonnegligent\nmanslaughter",
+    `Aggravated Assault` = "Aggravated\nassault",
+    `Property Crime` = "Property\ncrime",
+    `Larceny Theft` = "Larceny-\ntheft",
+    `Vehicle Theft` = "Motor\nvehicle\ntheft",
+    `Arson` = "Arson2" 
+         )
+
+rep_crime <- rep_crime %>%
+  mutate(
+    State = str_replace_all(State, "\\d+", ""),     # Remove digits
+    State = str_replace_all(State, ",", ""),        # Remove commas
+    State = str_trim(State))                        # Trim whitespace
+
+rep_crime <- rep_crime %>%
+  filter(rowSums(select(., where(is.numeric))) != 0)
+
+```
+```{r}
+ag_rep_crime <- rep_crime %>%
+  group_by(State) %>%
+  summarise(across(where(is.numeric), sum, na.rm = TRUE))
+
+ag_rep_crime <- ag_rep_crime %>% select(-Population)
+```
+
+```{r}
+write.csv(ag_rep_crime,"ag_rep_crime.csv")
+```
+
+
+
+

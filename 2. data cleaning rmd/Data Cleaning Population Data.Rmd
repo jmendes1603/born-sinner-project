@@ -1,0 +1,51 @@
+Data Cleaning Population Data
+```{r}
+pop_data <- sub_est2019_all[,9:22]
+
+# Rename columns to match other datasets
+names(pop_data)[names(pop_data) == "STNAME"] <- "State"
+names(pop_data)[names(pop_data) == "NAME"] <- "City"
+
+# Reorder Columns for State column to be first
+pop_data <- pop_data[, c("State", setdiff(names(pop_data), "State"))]
+
+# Remove more unwanted columns
+pop_data <- subset(pop_data, select = -c(CENSUS2010POP, ESTIMATESBASE2010))
+
+# Make all values in the state column uppercase to match other datasets
+pop_data$State <- toupper(pop_data$State)
+
+# Remove rows where all population estimate columns are zero
+pop_data <- pop_data %>% filter(rowSums(select(., starts_with("POPESTIMATE"))) != 0)
+
+# Remove rows where state and city are the same
+pop_data <- pop_data %>%
+  group_by(State, City) %>%
+  filter(n() == 1) %>%
+  ungroup()
+
+
+# Remove duplicate rows where the numeric values and State are the same, keeping only the first such row per group
+pop_data <- pop_data %>%
+  group_by(State, across(starts_with("POPESTIMATE"))) %>%
+  slice(1) %>%
+  ungroup()
+
+# Remove duplicate rows
+pop_data <- pop_data %>% distinct()
+```
+
+```{r}
+distinct(pop_data["State"])
+```
+```{r}
+#create aggregated table
+ag_pop_data <- pop_data %>%
+  group_by(State) %>%
+  summarise(across(starts_with("POPESTIMATE"), sum, na.rm = TRUE))
+```
+
+
+```{r}
+write.csv(ag_pop_data,"ag_pop_data.csv")
+```
